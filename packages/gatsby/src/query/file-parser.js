@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-expressions */
 // @flow
 const fs = require(`fs-extra`)
 const crypto = require(`crypto`)
@@ -39,6 +40,22 @@ const generateQueryName = ({ def, hash, file }) => {
   return def
 }
 
+// taken from `babel-plugin-remove-graphql-queries`, in the future import from
+// there
+function followVariableDeclarations(binding) {
+  const node = binding?.path?.node
+  if (
+    node?.type === `VariableDeclarator` &&
+    node?.id.type === `Identifier` &&
+    node?.init?.type === `Identifier`
+  ) {
+    return followVariableDeclarations(
+      binding.path.scope.getBinding(node.init.name)
+    )
+  }
+  return binding
+}
+
 function isUseStaticQuery(path) {
   return (
     (path.node.callee.type === `MemberExpression` &&
@@ -75,10 +92,7 @@ async function parseToAst(filePath, fileStr, { parentSpan, addError } = {}) {
         ast = tmp
         break
       } catch (error) {
-        boundActionCreators.queryExtractionGraphQLError({
-          componentPath: filePath,
-        })
-        continue
+        // We emit the actual error below if every transpiled variant fails to parse
       }
     }
     if (ast === undefined) {
@@ -345,21 +359,6 @@ async function findGraphQLTags(
           documents.push(docInFile)
         }
 
-        function followVariableDeclarations(binding) {
-          const node = binding.path?.node
-          if (
-            node &&
-            node.type === `VariableDeclarator` &&
-            node.id.type === `Identifier` &&
-            node.init.type === `Identifier`
-          ) {
-            return followVariableDeclarations(
-              binding.path.scope.getBinding(node.init.name)
-            )
-          }
-          return binding
-        }
-
         // When a component has a StaticQuery we scan all of its exports and follow those exported variables
         // to determine if they lead to this static query (via tagged template literal)
         traverse(ast, {
@@ -375,7 +374,7 @@ async function findGraphQLTags(
                 const binding = followVariableDeclarations(
                   path.scope.getBinding(path.node.local.name)
                 )
-                binding.path.traverse({ TaggedTemplateExpression })
+                binding?.path?.traverse({ TaggedTemplateExpression })
               },
             })
           },
@@ -417,7 +416,10 @@ export default class FileParser {
       return null
     }
 
-    if (!text.includes(`graphql`)) return null
+    // We do a quick check so we can exit early if this is a file we're not interested in.
+    // We only process files that either include graphql, or static images
+    if (!text.includes(`graphql`) && !text.includes(`gatsby-plugin-image`))
+      return null
     const hash = crypto
       .createHash(`md5`)
       .update(file)

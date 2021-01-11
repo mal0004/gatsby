@@ -1,9 +1,10 @@
-const Joi2GQL = require(`./joi-to-graphql`)
-const Joi = require(`@hapi/joi`)
-const { GraphQLString, GraphQLObjectType, GraphQLList } = require(`graphql`)
-const _ = require(`lodash`)
+import * as Joi2GQL from "./joi-to-graphql"
+import * as Joi from "@hapi/joi"
+import { GraphQLString, GraphQLObjectType, GraphQLList } from "graphql"
+import _ from "lodash"
+import { ObjectTypeComposer, schemaComposer } from "graphql-compose"
 
-const resources = require(`./resources`)
+import * as resources from "./resources"
 
 const typeNameToHumanName = name => {
   if (name.endsWith(`Connection`)) {
@@ -13,14 +14,15 @@ const typeNameToHumanName = name => {
   }
 }
 
-module.exports = () => {
+export default function createTypes() {
   const resourceTypes = Object.entries(resources).map(
     ([resourceName, resource]) => {
       if (!resource.schema) {
         return undefined
       }
 
-      const types = []
+      const queryTypes = []
+      const mutationTypes = {}
 
       const joiSchema = Joi.object().keys({
         ...resource.schema,
@@ -31,7 +33,8 @@ module.exports = () => {
         name: resourceName,
       })
 
-      const resourceType = {
+      // Query
+      const queryType = {
         type,
         args: {
           id: { type: GraphQLString },
@@ -42,8 +45,9 @@ module.exports = () => {
         },
       }
 
-      types.push(resourceType)
+      queryTypes.push(queryType)
 
+      // Query connection
       if (resource.all) {
         const connectionTypeName = resourceName + `Connection`
 
@@ -62,20 +66,82 @@ module.exports = () => {
           },
         }
 
-        types.push(connectionType)
+        queryTypes.push(connectionType)
       }
 
-      return types
+      // Destroy mutation
+      const camelCasedResourceName = _.camelCase(resourceName)
+      const inputType = ObjectTypeComposer.create(
+        type,
+        schemaComposer
+      ).getInputType()
+
+      const destroyMutation = {
+        type,
+        args: {
+          [camelCasedResourceName]: { type: inputType },
+        },
+        resolve: async (_root, args, context) => {
+          const value = await resource.destroy(
+            context,
+            args[camelCasedResourceName]
+          )
+          return { ...value, _typeName: resourceName }
+        },
+      }
+
+      mutationTypes[`destroy${resourceName}`] = destroyMutation
+
+      // Create mutation
+      const createMutation = {
+        type,
+        args: {
+          [camelCasedResourceName]: { type: inputType },
+        },
+        resolve: (_root, args, context) =>
+          resource.create(context, args[camelCasedResourceName]),
+      }
+
+      mutationTypes[`create${resourceName}`] = createMutation
+
+      // Update mutation
+      const updateMutation = {
+        type,
+        args: {
+          [camelCasedResourceName]: { type: inputType },
+        },
+        resolve: (_root, args, context) =>
+          resource.update(context, args[camelCasedResourceName]),
+      }
+
+      mutationTypes[`update${resourceName}`] = updateMutation
+
+      return {
+        query: queryTypes,
+        mutation: mutationTypes,
+      }
     }
   )
 
-  const types = _.flatten(resourceTypes)
-    .filter(Boolean)
-    .reduce((acc, curr) => {
-      const typeName = typeNameToHumanName(curr.type.toString())
-      acc[typeName] = curr
-      return acc
-    }, {})
+  const queryTypes = _.flatten(
+    resourceTypes.filter(Boolean).map(r => r.query)
+  ).reduce((acc, curr) => {
+    const typeName = typeNameToHumanName(curr.type.toString())
+    acc[typeName] = curr
+    return acc
+  }, {})
 
-  return types
+  const mutationTypes = _.flatten(
+    resourceTypes.filter(Boolean).map(r => r.mutation)
+  ).reduce((acc, curr) => {
+    Object.keys(curr).forEach(key => {
+      acc[typeNameToHumanName(key)] = curr[key]
+    })
+    return acc
+  }, {})
+
+  return {
+    queryTypes,
+    mutationTypes,
+  }
 }

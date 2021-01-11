@@ -4,7 +4,6 @@ const { createContentDigest } = require(`gatsby-core-utils`)
 const path = require(`path`)
 const { isWebUri } = require(`valid-url`)
 const Queue = require(`better-queue`)
-const readChunk = require(`read-chunk`)
 const fileType = require(`file-type`)
 const { createProgress } = require(`./utils`)
 
@@ -14,11 +13,14 @@ const {
   getRemoteFileName,
   createFilePath,
 } = require(`./utils`)
-const cacheId = url => `create-remote-file-node-${url}`
+const cacheIdForHeaders = url => `create-remote-file-node-headers-${url}`
+const cacheIdForExtensions = url => `create-remote-file-node-extension-${url}`
 
 let bar
 // Keep track of the total number of jobs we push in the queue
 let totalJobs = 0
+
+let showFlagWarning = !!process.env.GATSBY_EXPERIMENTAL_REMOTE_FILE_PLACEHOLDER
 
 /********************
  * Type Definitions *
@@ -54,11 +56,12 @@ let totalJobs = 0
  * @param  {Reporter} [options.reporter]
  */
 
-const STALL_RETRY_LIMIT = 3
-const STALL_TIMEOUT = 30000
+const STALL_RETRY_LIMIT = process.env.GATSBY_STALL_RETRY_LIMIT || 3
+const STALL_TIMEOUT = process.env.GATSBY_STALL_TIMEOUT || 30000
 
-const CONNECTION_RETRY_LIMIT = 5
-const CONNECTION_TIMEOUT = 30000
+const CONNECTION_TIMEOUT = process.env.GATSBY_CONNECTION_TIMEOUT || 30000
+
+const INCOMPLETE_RETRY_LIMIT = process.env.GATSBY_INCOMPLETE_RETRY_LIMIT || 3
 
 /********************
  * Queue Management *
@@ -151,10 +154,19 @@ const requestRemoteNode = (url, headers, tmpFilename, httpOpts, attempt = 1) =>
     }
     const responseStream = got.stream(url, {
       headers,
-      timeout: CONNECTION_TIMEOUT,
-      retries: CONNECTION_RETRY_LIMIT,
+      timeout: {
+        send: CONNECTION_TIMEOUT, // https://github.com/sindresorhus/got#timeout
+      },
       ...httpOpts,
     })
+
+    let haveAllBytesBeenWritten = false
+    responseStream.on(`downloadProgress`, progress => {
+      if (progress.transferred === progress.total || progress.total === null) {
+        haveAllBytesBeenWritten = true
+      }
+    })
+
     const fsWriteStream = fs.createWriteStream(tmpFilename)
     responseStream.pipe(fsWriteStream)
 
@@ -178,6 +190,29 @@ const requestRemoteNode = (url, headers, tmpFilename, httpOpts, attempt = 1) =>
       resetTimeout()
 
       fsWriteStream.on(`finish`, () => {
+        fsWriteStream.close()
+
+        // We have an incomplete download
+        if (!haveAllBytesBeenWritten) {
+          fs.removeSync(tmpFilename)
+
+          if (attempt < INCOMPLETE_RETRY_LIMIT) {
+            resolve(
+              requestRemoteNode(
+                url,
+                headers,
+                tmpFilename,
+                httpOpts,
+                attempt + 1
+              )
+            )
+          } else {
+            reject(
+              `Failed to download ${url} after ${INCOMPLETE_RETRY_LIMIT} attempts`
+            )
+          }
+        }
+
         if (timeout) {
           clearTimeout(timeout)
         }
@@ -205,10 +240,52 @@ async function processRemoteNode({
   ext,
   name,
 }) {
+  let filename
+  if (process.env.GATSBY_EXPERIMENTAL_REMOTE_FILE_PLACEHOLDER) {
+    filename = await fetchPlaceholder({
+      fromPath: process.env.GATSBY_EXPERIMENTAL_REMOTE_FILE_PLACEHOLDER,
+      url,
+      cache,
+      ext,
+      name,
+    })
+  } else {
+    filename = await fetchRemoteNode({
+      url,
+      cache,
+      auth,
+      httpHeaders,
+      ext,
+      name,
+    })
+  }
+
+  // Create the file node.
+  const fileNode = await createFileNode(filename, createNodeId, {})
+  fileNode.internal.description = `File "${url}"`
+  fileNode.url = url
+  fileNode.parent = parentNodeId
+  // Override the default plugin as gatsby-source-filesystem needs to
+  // be the owner of File nodes or there'll be conflicts if any other
+  // File nodes are created through normal usages of
+  // gatsby-source-filesystem.
+  await createNode(fileNode, { name: `gatsby-source-filesystem` })
+
+  return fileNode
+}
+
+async function fetchRemoteNode({
+  url,
+  cache,
+  auth = {},
+  httpHeaders = {},
+  ext,
+  name,
+}) {
   const pluginCacheDir = cache.directory
   // See if there's response headers for this url
   // from a previous request.
-  const cachedHeaders = await cache.get(cacheId(url))
+  const cachedHeaders = await cache.get(cacheIdForHeaders(url))
 
   const headers = { ...httpHeaders }
   if (cachedHeaders && cachedHeaders.etag) {
@@ -236,17 +313,23 @@ async function processRemoteNode({
   // Fetch the file.
   const response = await requestRemoteNode(url, headers, tmpFilename, httpOpts)
 
-  if (response.statusCode == 200) {
+  if (response.statusCode === 200) {
     // Save the response headers for future requests.
-    await cache.set(cacheId(url), response.headers)
+    await cache.set(cacheIdForHeaders(url), response.headers)
   }
 
   // If the user did not provide an extension and we couldn't get one from remote file, try and guess one
   if (ext === ``) {
-    const buffer = readChunk.sync(tmpFilename, 0, fileType.minimumBytes)
-    const filetype = fileType(buffer)
-    if (filetype) {
-      ext = `.${filetype.ext}`
+    if (response.statusCode === 200) {
+      // if this is fresh response - try to guess extension and cache result for future
+      const filetype = await fileType.fromFile(tmpFilename)
+      if (filetype) {
+        ext = `.${filetype.ext}`
+        await cache.set(cacheIdForExtensions(url), ext)
+      }
+    } else if (response.statusCode === 304) {
+      // if file on server didn't change - grab cached extension
+      ext = await cache.get(cacheIdForExtensions(url))
     }
   }
 
@@ -259,18 +342,20 @@ async function processRemoteNode({
     await fs.remove(tmpFilename)
   }
 
-  // Create the file node.
-  const fileNode = await createFileNode(filename, createNodeId, {})
-  fileNode.internal.description = `File "${url}"`
-  fileNode.url = url
-  fileNode.parent = parentNodeId
-  // Override the default plugin as gatsby-source-filesystem needs to
-  // be the owner of File nodes or there'll be conflicts if any other
-  // File nodes are created through normal usages of
-  // gatsby-source-filesystem.
-  await createNode(fileNode, { name: `gatsby-source-filesystem` })
+  return filename
+}
 
-  return fileNode
+async function fetchPlaceholder({ fromPath, url, cache, ext, name }) {
+  const pluginCacheDir = cache.directory
+  const digest = createContentDigest(url)
+
+  if (!ext) {
+    ext = getRemoteFileExtension(url)
+  }
+
+  const filename = createFilePath(path.join(pluginCacheDir, digest), name, ext)
+  fs.copySync(fromPath, filename)
+  return filename
 }
 
 /**
@@ -313,7 +398,7 @@ const pushTask = task =>
  * @param {CreateRemoteFileNodePayload} options
  * @return {Promise<Object>}                  Returns the created node
  */
-module.exports = ({
+module.exports = function createRemoteFileNode({
   url,
   cache,
   createNode,
@@ -325,7 +410,21 @@ module.exports = ({
   ext = null,
   name = null,
   reporter,
-}) => {
+}) {
+  if (showFlagWarning) {
+    showFlagWarning = false
+    // Note: This will use a placeholder image as the default for every file that is downloaded through this API.
+    //       That may break certain cases, in particular when the file is not meant to be an image or when the image
+    //       is expected to be of a particular type that is other than the placeholder. This API is meant to bypass
+    //       the remote download for local testing only.
+    console.info(
+      `GATSBY_EXPERIMENTAL_REMOTE_FILE_PLACEHOLDER: Any file downloaded by \`createRemoteFileNode\` will use the same placeholder image and skip the remote fetch. Note: This is an experimental flag that can change/disappear at any point.`
+    )
+    console.info(
+      `GATSBY_EXPERIMENTAL_REMOTE_FILE_PLACEHOLDER: File to use: \`${process.env.GATSBY_EXPERIMENTAL_REMOTE_FILE_PLACEHOLDER}\``
+    )
+  }
+
   // validation of the input
   // without this it's notoriously easy to pass in the wrong `createNodeId`
   // see gatsbyjs/gatsby#6643
@@ -354,7 +453,9 @@ module.exports = ({
   }
 
   if (!url || isWebUri(url) === undefined) {
-    return Promise.reject(`wrong url: ${url}`)
+    return Promise.reject(
+      `url passed to createRemoteFileNode is either missing or not a proper web uri: ${url}`
+    )
   }
 
   if (totalJobs === 0) {

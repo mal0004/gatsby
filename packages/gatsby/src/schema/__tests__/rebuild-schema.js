@@ -10,8 +10,7 @@ const {
 const { store } = require(`../../redux`)
 const { actions } = require(`../../redux/actions`)
 const { build, rebuild } = require(`..`)
-const { buildObjectType } = require(`../types/type-builders`)
-require(`../../db/__tests__/fixtures/ensure-loki`)()
+import { buildObjectType } from "../types/type-builders"
 
 jest.mock(`../../utils/api-runner-node`)
 
@@ -542,7 +541,9 @@ describe(`build and update individual types`, () => {
     const fields = newSchema.getType(`Foo`).getFields()
     const fieldNames = Object.keys(fields).sort()
     expect(fieldNames).toEqual(
-      initialFooFields.concat(`childBar`, `childBaz`).sort()
+      initialFooFields
+        .concat(`childBar`, `childBaz`, `childrenBar`, `childrenBaz`)
+        .sort()
     )
     expect(String(fields.childBar.type)).toEqual(`Bar`)
     expect(String(fields.childBaz.type)).toEqual(`Baz`)
@@ -574,7 +575,10 @@ describe(`build and update individual types`, () => {
 
     const fields = newSchema.getType(`Foo`).getFields()
     const fieldNames = Object.keys(fields).sort()
-    expect(fieldNames).toEqual(initialFooFields.concat(`childrenBar`).sort())
+    expect(fieldNames).toEqual(
+      initialFooFields.concat(`childBar`, `childrenBar`).sort()
+    )
+    expect(String(fields.childBar.type)).toEqual(`Bar`)
     expect(String(fields.childrenBar.type)).toEqual(`[Bar]`)
 
     await expectSymmetricDelete(nodes)
@@ -1221,7 +1225,12 @@ describe(`Compatibility with addThirdPartySchema`, () => {
       external2
     }
     `
-    const result = await graphql(newSchema, query)
+    const result = await graphql({
+      schema: newSchema,
+      source: query,
+      rootValue: {},
+      contextValue: {},
+    })
     expect(result).toEqual({
       data: {
         external: {
@@ -1263,7 +1272,12 @@ describe(`Compatibility with addThirdPartySchema`, () => {
       external2
     }
     `
-    const result = await graphql(newSchema, query)
+    const result = await graphql({
+      schema: newSchema,
+      source: query,
+      rootValue: {},
+      contextValue: {},
+    })
     expect(result).toEqual({
       data: {
         external: {

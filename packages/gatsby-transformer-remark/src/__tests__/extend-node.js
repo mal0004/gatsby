@@ -30,8 +30,9 @@ async function queryResult(
     {
       type: { name: `MarkdownRemark` },
       cache: {
-        get: () => null,
-        set: () => null,
+        // GatsbyCache
+        get: async () => null,
+        set: async () => null,
       },
       getNodesByType: type => [],
       ...additionalParameters,
@@ -104,23 +105,24 @@ const bootstrapTest = (
 
   it(label, async done => {
     node.content = content
-    const createNode = markdownNode => {
-      queryResult([markdownNode], query, {
+    async function createNode(markdownNode) {
+      const result = await queryResult([markdownNode], query, {
         additionalParameters,
         pluginOptions,
-      }).then(result => {
-        if (result.errors) {
-          done.fail(result.errors)
-        }
-
-        try {
-          test(result.data.listNode[0])
-          done()
-        } catch (err) {
-          done.fail(err)
-        }
       })
+
+      if (result.errors) {
+        done.fail(result.errors)
+      }
+
+      try {
+        test(result.data.listNode[0])
+        done()
+      } catch (err) {
+        done.fail(err)
+      }
     }
+
     const createParentChildLink = jest.fn()
     const actions = { createNode, createParentChildLink }
     const createNodeId = jest.fn()
@@ -1263,6 +1265,77 @@ describe(`Headings are generated correctly from schema`, () => {
           depth: 2,
         },
       ])
+    }
+  )
+
+  bootstrapTest(
+    `returns null id if heading has no id`,
+    `
+  # first title
+
+  ## second title
+  `,
+    `headings {
+        id
+        value
+        depth
+      }`,
+    node => {
+      expect(node).toMatchSnapshot()
+      expect(node.headings).toEqual([
+        {
+          id: null,
+          value: `first title`,
+          depth: 1,
+        },
+        {
+          id: null,
+          value: `second title`,
+          depth: 2,
+        },
+      ])
+    }
+  )
+
+  bootstrapTest(
+    `returns id if heading has one`,
+    `
+  # first title
+
+  ## second title
+  `,
+    `headings {
+        id
+        value
+        depth
+      }`,
+    node => {
+      expect(node).toMatchSnapshot()
+      expect(node.headings).toEqual([
+        {
+          id: `first-title`,
+          value: `first title`,
+          depth: 1,
+        },
+        {
+          id: `second-title`,
+          value: `second title`,
+          depth: 2,
+        },
+      ])
+    },
+    {
+      pluginOptions: {
+        plugins: [
+          // to pass subplugin we need to use object with `resolve` and `pluginOptions`
+          // (this is what gatsby core internally turns plugin entries to + gatsby core always set empty object {}
+          // if options were not provided and lot of plugins rely on this and are not checking for options existence)
+          {
+            resolve: require.resolve(`gatsby-remark-autolink-headers/src`),
+            pluginOptions: {},
+          },
+        ],
+      },
     }
   )
 

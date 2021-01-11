@@ -10,7 +10,7 @@ Showtime. Once you are happy with your site, you are ready to go live with it!
 ### Prerequisites
 
 - A [Gatsby site](/docs/quick-start)
-- The [Gatsby CLI](/docs/gatsby-cli) installed
+- The [Gatsby CLI](/docs/reference/gatsby-cli) installed
 
 ### Directions
 
@@ -46,7 +46,7 @@ gatsby build && gatsby serve
 
 ### Additional resources
 
-- Walk through building and deploying an example site in [tutorial part one](/tutorial/part-one/#deploying-a-gatsby-site)
+- Walk through building and deploying an example site in [tutorial part one](/docs/tutorial/part-one/#deploying-a-gatsby-site)
 - Learn about [performance optimization](/docs/performance/)
 - Read about [other deployment related topics](/docs/preparing-for-deployment/)
 - Check out the [deployment docs](/docs/deploying-and-hosting/) for specific hosting platforms and how to deploy to them
@@ -59,7 +59,7 @@ Use [`netlify-cli`](https://www.netlify.com/docs/cli/) to deploy your Gatsby app
 
 - A [Gatsby site](/docs/quick-start) with a single component `index.js`
 - The [netlify-cli](https://www.npmjs.com/package/netlify-cli) package installed
-- The [Gatsby CLI](/docs/gatsby-cli) installed
+- The [Gatsby CLI](/docs/reference/gatsby-cli) installed
 
 ### Directions
 
@@ -80,30 +80,30 @@ Use [`netlify-cli`](https://www.netlify.com/docs/cli/) to deploy your Gatsby app
 ### Additional resources
 
 - [Hosting on Netlify](/docs/hosting-on-netlify)
-- [gatsby-plugin-netlify](/packages/gatsby-plugin-netlify)
+- [gatsby-plugin-netlify](/plugins/gatsby-plugin-netlify)
 
-## Deploying to ZEIT Now
+## Deploying to Vercel
 
-Use [Now CLI](https://zeit.co/download) to deploy your Gatsby application without leaving the command-line interface.
+Use [Vercel CLI](https://vercel.com/download) to deploy your Gatsby application without leaving the command-line interface.
 
 ### Prerequisites
 
-- A [ZEIT Now](https://zeit.co/signup) account
+- A [Vercel](https://vercel.com/signup) account
 - A [Gatsby site](/docs/quick-start) with a single component `index.js`
-- [Now CLI](https://zeit.co/download) package installed
-- [Gatsby CLI](/docs/gatsby-cli) installed
+- [Vercel CLI](https://vercel.com/download) package installed
+- [Gatsby CLI](/docs/reference/gatsby-cli) installed
 
 ### Directions
 
-1. Login into Now CLI using `now login`
+1. Login into Vercel CLI using `vercel login`
 
 2. Change to the directory of your Gatsby.js application in the Terminal if you aren't already there
 
-3. Run `now` to deploy it
+3. Run `vercel` to deploy it
 
 ### Additional resources
 
-- [Deploying to ZEIT Now](/docs/deploying-to-zeit-now/)
+- [Deploying to Vercel](/docs/how-to/previews-deploys-hosting/deploying-to-vercel/)
 
 ## Deploying to Cloudflare Workers
 
@@ -114,7 +114,7 @@ Use [`wrangler`](https://developers.cloudflare.com/workers/tooling/wrangler/) to
 - An account on [Cloudflare](https://dash.cloudflare.com/sign-up)
 - A [Workers Unlimited plan](https://developers.cloudflare.com/workers/about/pricing/) for \$5/month to enable the KV store, which is required to serve the Gatsby files.
 - A [Gatsby site](/docs/quick-start) set up with Gatsby's CLI
-- [wrangler](https://developers.cloudflare.com/workers/tooling/wrangler/install/) installed globally (`npm i -g @cloudflare/wrangler`)
+- [wrangler](https://developers.cloudflare.com/workers/tooling/wrangler/install/) installed globally (`npm install -g @cloudflare/wrangler`)
 
 ### Directions
 
@@ -138,7 +138,7 @@ Use `gatsby-plugin-google-analytics` to track site activity and provide insights
 ### Prerequisites
 
 - A [Gatsby site](/docs/quick-start) with a `gatsby-config.js` file and an `index.js` page
-- The [Gatsby CLI](/docs/gatsby-cli) installed
+- The [Gatsby CLI](/docs/reference/gatsby-cli) installed
 - A domain from your provider of choice, e.g. [AWS](https://aws.amazon.com/getting-started/tutorials/get-a-domain/)
 
 ### Verify the domain in search.google.com
@@ -185,4 +185,4 @@ module.exports = {
 
 ### Additional resources
 
-- [adding-analytics](/docs/adding-analytics/)
+- [Adding Analytics](/docs/how-to/adding-common-features/adding-analytics/)

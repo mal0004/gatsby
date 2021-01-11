@@ -1,41 +1,7 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`redux db should write loki cache to disk 1`] = `
-Object {
-  "componentDataDependencies": Object {
-    "connections": Map {},
-    "nodes": Map {},
-  },
-  "components": Map {
-    "/Users/username/dev/site/src/templates/my-sweet-new-page.js" => Object {
-      "componentPath": "/Users/username/dev/site/src/templates/my-sweet-new-page.js",
-      "isInBootstrap": true,
-      "pages": Set {
-        "/my-sweet-new-page/",
-      },
-      "query": "",
-    },
-  },
-  "jobsV2": Object {
-    "complete": Map {},
-    "incomplete": Map {},
-  },
-  "pageData": Map {},
-  "pageDataStats": Map {},
-  "staticQueryComponents": Map {},
-  "status": Object {
-    "plugins": Object {},
-  },
-  "webpackCompilationHash": "",
-}
-`;
-
 exports[`redux db should write redux cache to disk 1`] = `
 Object {
-  "componentDataDependencies": Object {
-    "connections": Map {},
-    "nodes": Map {},
-  },
   "components": Map {
     "/Users/username/dev/site/src/templates/my-sweet-new-page.js" => Object {
       "componentPath": "/Users/username/dev/site/src/templates/my-sweet-new-page.js",
@@ -84,8 +50,36 @@ Object {
   },
   "pageData": Map {},
   "pageDataStats": Map {},
+  "pendingPageDataWrites": Object {
+    "pagePaths": Set {},
+  },
+  "queries": Object {
+    "byConnection": Map {},
+    "byNode": Map {},
+    "deletedQueries": Set {},
+    "dirtyQueriesListToEmitViaWebsocket": Array [],
+    "queryNodes": Map {},
+    "trackedComponents": Map {
+      "/Users/username/dev/site/src/templates/my-sweet-new-page.js" => Object {
+        "componentPath": "/Users/username/dev/site/src/templates/my-sweet-new-page.js",
+        "errors": 0,
+        "pages": Set {
+          "/my-sweet-new-page/",
+        },
+        "query": "",
+      },
+    },
+    "trackedQueries": Map {
+      "/my-sweet-new-page/" => Object {
+        "dirty": 1,
+        "running": 0,
+      },
+    },
+  },
+  "staticQueriesByTemplate": Map {},
   "staticQueryComponents": Map {},
   "status": Object {
+    "PLUGINS_HASH": "",
     "plugins": Object {},
   },
   "webpackCompilationHash": "",

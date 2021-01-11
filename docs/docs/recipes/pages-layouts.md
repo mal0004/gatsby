@@ -33,8 +33,8 @@ Some notable files and their definitions:
 
 ### Additional resources
 
-- For a tour of all the common folders and files, read the docs on [Gatsby's Project Structure](/docs/gatsby-project-structure/)
-- For common commands, check out the [Gatsby CLI docs](/docs/gatsby-cli)
+- For a tour of all the common folders and files, read the docs on [Gatsby's Project Structure](/docs/reference/gatsby-project-structure/)
+- For common commands, check out the [Gatsby CLI docs](/docs/reference/gatsby-cli)
 - Check out the [Gatsby Cheat Sheet](/docs/cheat-sheet/) for downloadable info at a glance
 
 ## Creating pages automatically
@@ -45,7 +45,7 @@ For example, components at `src/pages/index.js` and `src/pages/about.js` would a
 ### Prerequisites
 
 - A [Gatsby site](/docs/quick-start)
-- The [Gatsby CLI](/docs/gatsby-cli) installed
+- The [Gatsby CLI](/docs/reference/gatsby-cli) installed
 
 ### Directions
 
@@ -79,7 +79,7 @@ Routing for links internal to your Gatsby site relies on the `<Link />` componen
 ### Prerequisites
 
 - A Gatsby site with two page components: `index.js` and `contact.js`
-- The [Gatsby CLI](/docs/gatsby-cli/) to run `gatsby develop`
+- The [Gatsby CLI](/docs/reference/gatsby-cli/) to run `gatsby develop`
 
 ### Directions
 
@@ -89,24 +89,26 @@ Routing for links internal to your Gatsby site relies on the `<Link />` componen
 import React from "react"
 import { Link } from "gatsby" // highlight-line
 
-export default () => (
-  <main>
-    <h1>What a world.</h1>
-    <p>
-      <Link to="/contact/">Contact</Link> // highlight-line
-    </p>
-  </main>
-)
+export default function Home() {
+  return (
+    <main>
+      <h1>What a world.</h1>
+      <p>
+        <Link to="/contact/">Contact</Link> // highlight-line
+      </p>
+    </main>
+  )
+}
 ```
 
 2. Run `gatsby develop` and navigate to the index page. You should have a link that takes you to the contact page when clicked!
 
-> **Note**: Gatsby's `<Link />` component is a wrapper around [`@reach/router`'s Link component](https://reach.tech/router/api/Link). It outputs an HTML anchor when rendered in a browser, with built-in JavaScript functionality for performance. For more information, consult the [API reference for `<Link />`](/docs/gatsby-link/).
+> **Note**: Gatsby's `<Link />` component is a wrapper around [`@reach/router`'s Link component](https://reach.tech/router/api/Link). It outputs an HTML anchor when rendered in a browser, with built-in JavaScript functionality for performance. For more information, consult the [API reference for `<Link />`](/docs/reference/built-in-components/gatsby-link/).
 
 ### Additional resources
 
 - [Linking Between Pages guide](/docs/linking-between-pages)
-- [Gatsby Link API](/docs/gatsby-link)
+- [Gatsby Link API](/docs/reference/built-in-components/gatsby-link)
 
 ## Creating a layout component
 
@@ -123,11 +125,13 @@ It's common to wrap pages with a React layout component, which makes it possible
 ```jsx:title=src/components/layout.js
 import React from "react"
 
-export default ({ children }) => (
-  <div style={{ margin: `0 auto`, maxWidth: 650, padding: `0 1rem` }}>
-    {children}
-  </div>
-)
+export default function Layout({ children }) {
+  return (
+    <div style={{ margin: `0 auto`, maxWidth: 650, padding: `0 1rem` }}>
+      {children}
+    </div>
+  )
+}
 ```
 
 2. Import and use the layout component in a page:
@@ -137,18 +141,20 @@ import React from "react"
 import { Link } from "gatsby"
 import Layout from "../components/layout"
 
-export default () => (
-  <Layout>
-    <Link to="/contact/">Contact</Link>
-    <p>What a world.</p>
-  </Layout>
-)
+export default function Home() {
+  return (
+    <Layout>
+      <Link to="/contact/">Contact</Link>
+      <p>What a world.</p>
+    </Layout>
+  )
+}
 ```
 
 ### Additional resources
 
-- Create a layout component in [tutorial part three](/tutorial/part-three/#your-first-layout-component)
-- Styling with [Layout Components](/docs/layout-components/)
+- Create a layout component in [tutorial part three](/docs/tutorial/part-three/#your-first-layout-component)
+- Styling with [Layout Components](/docs/how-to/routing/layout-components/)
 
 ## Creating pages programmatically with createPage
 
@@ -225,17 +231,19 @@ exports.createPages = ({ actions }) => {
 ```jsx:title=src/templates/dog-template.js
 import React from "react"
 
-export default ({ pageContext: { dog } }) => (
-  <section>
-    {dog.name} - {dog.breed}
-  </section>
-)
+export default function DogTemplate({ pageContext: { dog } }) {
+  return (
+    <section>
+      {dog.name} - {dog.breed}
+    </section>
+  )
+}
 ```
 
 5. Run `gatsby develop` and navigate to the path of one of the pages you created (like at `http://localhost:8000/Fido`) to see the data you passed it displayed on the page
 
 ### Additional resources
 
-- Tutorial section on [programmatically creating pages from data](/tutorial/part-seven/)
-- Reference guide on [using Gatsby without GraphQL](/docs/using-gatsby-without-graphql/)
+- Tutorial section on [programmatically creating pages from data](/docs/tutorial/part-seven/)
+- Reference guide on [using Gatsby without GraphQL](/docs/how-to/querying-data/using-gatsby-without-graphql/)
 - [Example repo](https://github.com/gatsbyjs/gatsby/tree/master/examples/recipe-createPage) for this recipe

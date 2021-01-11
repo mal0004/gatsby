@@ -1,5 +1,5 @@
-import fs from "fs"
-import path from "path"
+import * as fs from "fs"
+import * as path from "path"
 import sharp from "./safe-sharp"
 import { createContentDigest, cpuCoreCount, slash } from "gatsby-core-utils"
 import {
@@ -8,6 +8,8 @@ import {
   addDigestToPath,
   favicons,
 } from "./common"
+
+import pluginOptionsSchema from "./pluginOptionsSchema"
 
 sharp.simd(true)
 
@@ -45,20 +47,36 @@ async function generateIcon(icon, srcIcon) {
 async function checkCache(cache, icon, srcIcon, srcIconDigest, callback) {
   const cacheKey = createContentDigest(`${icon.src}${srcIcon}${srcIconDigest}`)
 
-  let created = cache.get(cacheKey, srcIcon)
-
+  const created = cache.get(cacheKey, srcIcon)
   if (!created) {
     cache.set(cacheKey, true)
 
     try {
-      // console.log(`creating icon`, icon.src, srcIcon)
       await callback(icon, srcIcon)
     } catch (e) {
       cache.set(cacheKey, false)
       throw e
     }
-  } else {
-    // console.log(`icon exists`, icon.src, srcIcon)
+  }
+}
+
+exports.pluginOptionsSchema = pluginOptionsSchema
+
+/**
+ * Setup pluginOption defaults
+ * TODO: Remove once pluginOptionsSchema is stable
+ */
+exports.onPreInit = (_, pluginOptions) => {
+  pluginOptions.cache_busting_mode = pluginOptions.cache_busting_mode ?? `query`
+  pluginOptions.include_favicon = pluginOptions.include_favicon ?? true
+  pluginOptions.legacy = pluginOptions.legacy ?? true
+  pluginOptions.theme_color_in_head = pluginOptions.theme_color_in_head ?? true
+  pluginOptions.cacheDigest = null
+
+  if (pluginOptions.cache_busting_mode !== `none` && pluginOptions.icon) {
+    pluginOptions.cacheDigest = createContentDigest(
+      fs.readFileSync(pluginOptions.icon)
+    )
   }
 }
 
@@ -69,6 +87,7 @@ exports.onPostBootstrap = async (
   const activity = reporter.activityTimer(`Build manifest and related icons`, {
     parentSpan,
   })
+
   activity.start()
 
   let cache = new Map()
@@ -165,14 +184,14 @@ const makeManifest = async ({
       const exists = fs.existsSync(iconPath)
       //create destination directory if it doesn't exist
       if (!exists) {
-        fs.mkdirSync(iconPath)
+        fs.mkdirSync(iconPath, { recursive: true })
       }
       paths[iconPath] = true
     }
   })
 
   // Only auto-generate icons if a src icon is defined.
-  if (icon !== undefined) {
+  if (typeof icon !== `undefined`) {
     // Check if the icon exists
     if (!doesIconExist(icon)) {
       throw new Error(
@@ -239,6 +258,10 @@ const makeManifest = async ({
     // the resized image(s)
     if (faviconIsEnabled) {
       await processIconSet(favicons)
+
+      if (metadata.format === `svg`) {
+        fs.copyFileSync(icon, path.join(`public`, `favicon.svg`))
+      }
     }
   }
 

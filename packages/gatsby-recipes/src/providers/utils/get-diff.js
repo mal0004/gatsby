@@ -1,7 +1,8 @@
-const diff = require(`jest-diff`).default
-const chalk = require(`chalk`)
+import diff from "jest-diff"
+import chalk from "chalk"
+import stripAnsi from "strip-ansi"
 
-module.exports = async (oldVal, newVal) => {
+export default function getDiff(oldVal, newVal) {
   const options = {
     aAnnotation: `Original`,
     bAnnotation: `Modified`,
@@ -12,7 +13,11 @@ module.exports = async (oldVal, newVal) => {
     expand: false,
   }
 
-  const diffText = diff(oldVal, newVal, options)
+  let diffText = diff(oldVal, newVal, options)
+
+  if (process.env.GATSBY_RECIPES_NO_COLOR) {
+    diffText = stripAnsi(diffText)
+  }
 
   return diffText
 }

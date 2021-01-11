@@ -3,7 +3,6 @@ const { store } = require(`../../redux`)
 const { actions } = require(`../../redux/actions`)
 const { build } = require(`..`)
 const withResolverContext = require(`../context`)
-require(`../../db/__tests__/fixtures/ensure-loki`)()
 
 jest.mock(`../../utils/api-runner-node`)
 const apiRunnerNode = require(`../../utils/api-runner-node`)
@@ -117,10 +116,10 @@ describe(`Query schema`, () => {
                     query: {
                       filter: {
                         frontmatter: {
-                          authors: { email: { eq: source.email } },
-                          // authors: {
-                          //   elemMatch: { email: { eq: source.email } },
-                          // },
+                          // authors: { email: { eq: source.email } },
+                          authors: {
+                            elemMatch: { email: { eq: source.email } },
+                          },
                         },
                       },
                     },
@@ -225,6 +224,7 @@ describe(`Query schema`, () => {
             edges {
               node {
                 childMarkdown { frontmatter { title } }
+                childrenMarkdown { frontmatter { title } }
               }
             }
           }
@@ -237,16 +237,23 @@ describe(`Query schema`, () => {
             {
               node: {
                 childMarkdown: { frontmatter: { title: `Markdown File 1` } },
+                childrenMarkdown: [
+                  { frontmatter: { title: `Markdown File 1` } },
+                ],
               },
             },
             {
               node: {
                 childMarkdown: { frontmatter: { title: `Markdown File 2` } },
+                childrenMarkdown: [
+                  { frontmatter: { title: `Markdown File 2` } },
+                ],
               },
             },
             {
               node: {
                 childMarkdown: null,
+                childrenMarkdown: [],
               },
             },
           ],
@@ -262,6 +269,7 @@ describe(`Query schema`, () => {
           allFile {
             edges {
               node {
+                childAuthor { name }
                 childrenAuthor { name }
               }
             }
@@ -274,16 +282,19 @@ describe(`Query schema`, () => {
           edges: [
             {
               node: {
+                childAuthor: null,
                 childrenAuthor: [],
               },
             },
             {
               node: {
+                childAuthor: null,
                 childrenAuthor: [],
               },
             },
             {
               node: {
+                childAuthor: { name: `Author 2` },
                 childrenAuthor: [{ name: `Author 2` }, { name: `Author 1` }],
               },
             },

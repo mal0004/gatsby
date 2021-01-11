@@ -12,7 +12,7 @@ Markdown is a plain text syntax for writing text documents that can be transform
 Markdown dates back to 2004, when John Gruber published the original [Markdown syntax guide](https://daringfireball.net/projects/markdown/syntax). Gruber, along with Aaron Swartz, created Markdown with two goals:
 
 1. to make Markdown <q>as easy-to-read and easy-to-write as is feasible.</q>; and
-1. to support inline HTML within Markdown-formatted text.
+2. to support inline HTML within Markdown-formatted text.
 
 Text-to-HTML filters such as [Textile](https://textile-lang.com/) define a syntax that replaces a wide range of HTML elements. Other filters, such as [reStructuredText](https://docutils.readthedocs.io/en/sphinx-docs/user/rst/quickstart.html), do not support inline HTML tags.
 
@@ -21,7 +21,7 @@ Markdown, by contrast, only defines a syntax for a small subset of HTML elements
 ```markdown
 # Markdown!
 
-You can use Markdown to create documents for [Gatsby](https://www.gatsbyjs.org/).
+You can use Markdown to create documents for [Gatsby](https://www.gatsbyjs.com/).
 
 <figure class="chart">
   <object data="chart.svg" type="image/svg+xml"></object>
@@ -37,7 +37,7 @@ When converted to HTML, the preceding Markdown will become the markup below.
 <h1>Markdown!</h1>
 <p>
   You can use Markdown to create documents for
-  <a href="https://www.gatsbyjs.org/">Gatsby</a>.
+  <a href="https://www.gatsbyjs.com/">Gatsby</a>.
 </p>
 <figure class="chart">
   <object data="chart.svg" type="image/svg+xml"></object>
@@ -47,19 +47,19 @@ When converted to HTML, the preceding Markdown will become the markup below.
 </figure>
 ```
 
-You can use Markdown files as a content source for your Gatsby site. To do so, you'll need to install two plugins: [`gatsby-source-filesystem`](/packages/gatsby-source-filesystem) and [`gatsby-transformer-remark`](/packages/gatsby-transformer-remark/). As with Gatsby itself, you can install both using [npm](/docs/glossary/#npm).
+You can use Markdown files as a content source for your Gatsby site. To do so, you'll need to install two plugins: [`gatsby-source-filesystem`](/plugins/gatsby-source-filesystem) and [`gatsby-transformer-remark`](/plugins/gatsby-transformer-remark/). As with Gatsby itself, you can install both using [npm](/docs/glossary/#npm).
 
-```bash
-npm install --save gatsby-source-filesystem gatsby-transformer-remark
+```shell
+npm install gatsby-source-filesystem gatsby-transformer-remark
 ```
 
 The `gatsby-source-filesystem` plugin reads files from your computer. The `gatsby-transformer-remark` plugin makes the contents of your Markdown files available to GraphQL.
 
-You can also try a [Gatsby starter](https://www.gatsbyjs.org/starters/?c=Markdown) package that has Markdown support already included.
+You can also try a [Gatsby starter](https://www.gatsbyjs.com/starters/?c=Markdown) package that has Markdown support already included.
 
 ## Learn more about Markdown
 
-- [Markdown syntax](/docs/mdx/markdown-syntax/) from the Gatsby docs
+- [Markdown syntax](/docs/how-to/routing/mdx/markdown-syntax/) from the Gatsby docs
 - [CommonMark](https://commonmark.org/), a proposed Markdown specification
-- [Sourcing from the Filesystem](/docs/sourcing-from-the-filesystem/) from the Gatsby docs
-- [Adding Markdown Pages](/docs/adding-markdown-pages/) from the Gatsby docs
+- [Sourcing from the Filesystem](/docs/how-to/sourcing-data/sourcing-from-the-filesystem) from the Gatsby docs
+- [Adding Markdown Pages](/docs/how-to/routing/adding-markdown-pages/) from the Gatsby docs

@@ -1,10 +1,42 @@
 import React, { useContext, useState, useEffect } from "react"
-import { Box, Color, StdoutContext } from "ink"
+import { Box, Text, useStdout } from "ink"
 import StoreStateContext from "../context"
+import { ActivityStatuses } from "../../../constants"
+import { createLabel } from "./utils"
+
+const getLabel = (
+  level: ActivityStatuses | string
+): ReturnType<typeof createLabel> => {
+  switch (level) {
+    case ActivityStatuses.InProgress:
+      return createLabel(`In Progress`, `white`)
+    case ActivityStatuses.Interrupted:
+      return createLabel(`Interrupted`, `gray`)
+    case ActivityStatuses.Failed:
+      return createLabel(`Failed`, `red`)
+    case ActivityStatuses.Success:
+      return createLabel(`Success`, `green`)
+
+    default:
+      return createLabel(level, `white`)
+  }
+}
 
 // Track the width and height of the terminal. Responsive app design baby!
 const useTerminalResize = (): Array<number> => {
-  const { stdout } = useContext(StdoutContext)
+  const { stdout } = useStdout()
+
+  // stdout type is nullable, so we need to handle case where it is undefined for type checking.
+  // In practice this shouldn't happen ever, because AFAIK type is only nullable
+  // because Ink's StdoutContext is initiated with `undefined`:
+  // https://github.com/vadimdemedes/ink/blob/83894963727cf40ccac2256ec346e5ff3381c918/src/components/StdoutContext.ts#L20-L23
+  // but ContextProvider requires stdout to be set:
+  // https://github.com/vadimdemedes/ink/blob/83894963727cf40ccac2256ec346e5ff3381c918/src/components/App.tsx#L18
+  // https://github.com/vadimdemedes/ink/blob/83894963727cf40ccac2256ec346e5ff3381c918/src/components/App.tsx#L79-L84
+  if (!stdout) {
+    return [0]
+  }
+
   const [sizes, setSizes] = useState([stdout.columns, stdout.rows])
   useEffect(() => {
     const resizeListener = (): void => {
@@ -22,21 +54,25 @@ const useTerminalResize = (): Array<number> => {
 interface IDevelopProps {
   pagesCount: number
   appName: string
-  status: string
+  status: ActivityStatuses | ""
 }
 
 const Develop: React.FC<IDevelopProps> = ({ pagesCount, appName, status }) => {
   const [width] = useTerminalResize()
 
+  const StatusLabel = getLabel(status)
+
   return (
     <Box flexDirection="column" marginTop={2}>
-      <Box textWrap={`truncate`}>{`—`.repeat(width)}</Box>
+      <Box>
+        <Text wrap="truncate">{`—`.repeat(width)}</Text>
+      </Box>
       <Box height={1} flexDirection="row">
-        <Color>{pagesCount} pages</Color>
+        <StatusLabel />
         <Box flexGrow={1} />
-        <Color>{status}</Color>
+        <Text>{appName}</Text>
         <Box flexGrow={1} />
-        <Color>{appName}</Color>
+        <Text>{pagesCount} pages</Text>
       </Box>
     </Box>
   )

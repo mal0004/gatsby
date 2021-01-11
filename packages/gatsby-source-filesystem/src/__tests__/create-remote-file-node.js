@@ -76,7 +76,9 @@ describe(`create-remote-file-node`, () => {
           url: ``,
         })
 
-        expect(value).rejects.toMatch(`wrong url: `)
+        expect(value).rejects.toMatch(
+          `url passed to createRemoteFileNode is either missing or not a proper web uri: `
+        )
       })
 
       it(`does not increment progress bar total`, () => {
@@ -85,7 +87,9 @@ describe(`create-remote-file-node`, () => {
           url: ``,
         })
 
-        expect(value).rejects.toMatch(`wrong url: `)
+        expect(value).rejects.toMatch(
+          `url passed to createRemoteFileNode is either missing or not a proper web uri: `
+        )
 
         expect(progressBar.total).toBe(0)
         expect(progressBar.tick).not.toHaveBeenCalled()
@@ -96,11 +100,7 @@ describe(`create-remote-file-node`, () => {
   describe(`valid url`, () => {
     let uuid = 0
 
-    const setup = (
-      args = {},
-      type = `response`,
-      response = { statusCode: 200 }
-    ) => {
+    const setup = (args = {}, response = { statusCode: 200 }) => {
       const url = `https://images.whatever.com/real-image-trust-me-${uuid}.png`
 
       const gotMock = {
@@ -117,13 +117,20 @@ describe(`create-remote-file-node`, () => {
       got.stream.mockReturnValueOnce({
         pipe: jest.fn(() => gotMock),
         on: jest.fn((mockType, mockCallback) => {
-          if (mockType === type) {
+          if (mockType === `response`) {
             // got throws on 404/500 so we mimic this behaviour
             if (response.statusCode === 404) {
               throw new Error(`Response code 404 (Not Found)`)
             }
 
             mockCallback(response)
+          }
+          if (mockType === `downloadProgress`) {
+            mockCallback({
+              progress: 1,
+              transferred: 1,
+              total: 1,
+            })
           }
 
           return gotMock

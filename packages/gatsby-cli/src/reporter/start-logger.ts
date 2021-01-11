@@ -3,17 +3,14 @@
  */
 import semver from "semver"
 import { isCI } from "gatsby-core-utils"
+import { initializeIPCLogger } from "./loggers/ipc"
+import { initializeJSONLogger } from "./loggers/json"
+import { initializeYurnalistLogger } from "./loggers/yurnalist"
+import { initializeINKLogger } from "./loggers/ink"
 
 export const startLogger = (): void => {
-  let inkExists = false
-  try {
-    inkExists = !!require.resolve(`ink`)
-    // eslint-disable-next-line no-empty
-  } catch (err) {}
-
   if (!process.env.GATSBY_LOGGER) {
     if (
-      inkExists &&
       semver.satisfies(process.version, `>=8`) &&
       !isCI() &&
       typeof jest === `undefined`
@@ -27,14 +24,14 @@ export const startLogger = (): void => {
   if (process.send) {
     // process.env.FORCE_COLOR = `0`
 
-    require(`./loggers/ipc`)
+    initializeIPCLogger()
   }
 
   if (process.env.GATSBY_LOGGER.includes(`json`)) {
-    require(`./loggers/json`)
+    initializeJSONLogger()
   } else if (process.env.GATSBY_LOGGER.includes(`yurnalist`)) {
-    require(`./loggers/yurnalist`)
+    initializeYurnalistLogger()
   } else {
-    require(`./loggers/ink`)
+    initializeINKLogger()
   }
 }

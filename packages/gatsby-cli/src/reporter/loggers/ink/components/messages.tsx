@@ -1,19 +1,8 @@
-import React, { FunctionComponent } from "react"
-import { Box, Color, ColorProps } from "ink"
+import React from "react"
+import { Box, Text } from "ink"
+import { createLabel } from "./utils"
 
 import { ActivityLogLevels, LogLevels } from "../../../constants"
-
-const ColorSwitcher: FunctionComponent<ColorProps> = ({
-  children,
-  ...props
-}) => <Color {...props}>{children}</Color>
-
-const createLabel = (
-  text: string,
-  color: string
-): FunctionComponent<ColorProps> => (...props): JSX.Element => (
-  <ColorSwitcher {...{ [color]: true, ...props }}>{text}</ColorSwitcher>
-)
 
 const getLabel = (
   level: ActivityLogLevels | LogLevels
@@ -55,16 +44,18 @@ export const Message = React.memo<IMessageProps>(
       message += ` - ${statusText}`
     }
     if (!level || level === `LOG`) {
-      return <>{message}</>
+      return <Text>{message}</Text>
     }
 
     const TextLabel = getLabel(level)
 
     return (
-      <Box textWrap="wrap" flexDirection="row">
-        <TextLabel />
-        {` `}
-        {message}
+      <Box flexDirection="row">
+        <Text wrap="wrap">
+          <TextLabel />
+          {` `}
+          {message}
+        </Text>
       </Box>
     )
   }

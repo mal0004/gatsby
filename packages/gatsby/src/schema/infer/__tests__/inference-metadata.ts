@@ -770,7 +770,7 @@ describe(`Get example value for type inference`, () => {
         },
       },
     ]
-    const nodes = (_nodes as unknown) as Node[]
+    const nodes = (_nodes as unknown) as Array<Node>
     it(`updates example value when nodes are added`, () => {
       let inferenceMetadata = {
         typeName: `IncrementalExampleValue`,
@@ -1040,7 +1040,7 @@ describe(`Type conflicts`, () => {
 describe(`Type change detection`, () => {
   let initialMetadata
 
-  const nodes = (): object[] => [
+  const nodes = (): Array<object> => [
     { foo: `foo` },
     { object: { foo: `foo`, bar: `bar` } },
     { list: [`item`], bar: `bar` },
@@ -1058,7 +1058,7 @@ describe(`Type change detection`, () => {
     deleteNode(_.cloneDeep(metadata), node as Node)
 
   beforeEach(() => {
-    initialMetadata = addNodes(undefined, nodes() as Node[])
+    initialMetadata = addNodes(undefined, nodes() as Array<Node>)
     initialMetadata.dirty = false
   })
 
@@ -1145,9 +1145,10 @@ describe(`Type change detection`, () => {
     // add/delete to such fields as mutations
     let metadata = addOne({ relatedNode___NODE: `added` })
     expect(metadata.dirty).toEqual(true)
-    expect(haveEqualFields(metadata, initialMetadata)).toEqual(true)
+    expect(haveEqualFields(metadata, initialMetadata)).toEqual(false)
     metadata.dirty = false
 
+    // Deleting is expected to restore initial metadata state
     metadata = deleteOne({ relatedNode___NODE: `added` }, metadata)
     expect(metadata.dirty).toEqual(true)
     expect(haveEqualFields(metadata, initialMetadata)).toEqual(true)
@@ -1162,9 +1163,10 @@ describe(`Type change detection`, () => {
   it(`detects on any change of the relatedNodeList field`, () => {
     let metadata = addOne({ relatedNodeList___NODE: [`added`] })
     expect(metadata.dirty).toEqual(true)
-    expect(haveEqualFields(metadata, initialMetadata)).toEqual(true)
+    expect(haveEqualFields(metadata, initialMetadata)).toEqual(false)
     metadata.dirty = false
 
+    // Deleting is expected to restore initial metadata state
     metadata = deleteOne({ relatedNodeList___NODE: [`added`] }, metadata)
     expect(metadata.dirty).toEqual(true)
     expect(haveEqualFields(metadata, initialMetadata)).toEqual(true)

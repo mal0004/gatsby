@@ -1,4 +1,7 @@
+import reporter from "gatsby-cli/lib/reporter"
+
 import {
+  IGatsbyConfig,
   IGatsbyPlugin,
   ProgramStatus,
   ICreatePageDependencyAction,
@@ -12,7 +15,16 @@ import {
   ISetProgramStatusAction,
   IPageQueryRunAction,
   IRemoveStaleJobAction,
+  ISetSiteConfig,
+  IDefinitionMeta,
+  ISetGraphQLDefinitionsAction,
+  IQueryStartAction,
+  IApiFinishedAction,
+  IQueryClearDirtyQueriesListToEmitViaWebsocket,
 } from "../types"
+
+import { gatsbyConfigSchema } from "../../joi-schemas/joi"
+import { didYouMean } from "../../utils/did-you-mean"
 
 /**
  * Create a dependency between a page and data. Probably for
@@ -44,7 +56,7 @@ export const createPageDependency = (
  * @private
  */
 export const deleteComponentsDependencies = (
-  paths: string[]
+  paths: Array<string>
 ): IDeleteComponentDependenciesAction => {
   return {
     type: `DELETE_COMPONENTS_DEPENDENCIES`,
@@ -72,6 +84,15 @@ export const replaceComponentQuery = ({
       query,
       componentPath,
     },
+  }
+}
+
+export const apiFinished = (
+  payload: IApiFinishedAction["payload"]
+): IApiFinishedAction => {
+  return {
+    type: `API_FINISHED`,
+    payload,
   }
 }
 
@@ -107,6 +128,23 @@ export const queryExtracted = (
     plugin,
     traceId,
     payload: { componentPath, query },
+  }
+}
+
+/**
+ * Set Definitions for fragment extraction, etc.
+ *
+ * Used by developer tools such as vscode-graphql & graphiql
+ *
+ * query-compiler.js.
+ * @private
+ */
+export const setGraphQLDefinitions = (
+  definitionsByName: Map<string, IDefinitionMeta>
+): ISetGraphQLDefinitionsAction => {
+  return {
+    type: `SET_GRAPHQL_DEFINITIONS`,
+    payload: definitionsByName,
   }
 }
 
@@ -199,13 +237,32 @@ export const pageQueryRun = (
   }
 }
 
+export const queryStart = (
+  { path, componentPath, isPage },
+  plugin: IGatsbyPlugin,
+  traceId?: string
+): IQueryStartAction => {
+  return {
+    type: `QUERY_START`,
+    plugin,
+    traceId,
+    payload: { path, componentPath, isPage },
+  }
+}
+
+export const clearDirtyQueriesListToEmitViaWebsocket = (): IQueryClearDirtyQueriesListToEmitViaWebsocket => {
+  return {
+    type: `QUERY_CLEAR_DIRTY_QUERIES_LIST_TO_EMIT_VIA_WEBSOCKET`,
+  }
+}
+
 /**
  * Remove jobs which are marked as stale (inputPath doesn't exists)
  * @private
  */
 export const removeStaleJob = (
   contentDigest: string,
-  plugin: IGatsbyPlugin,
+  plugin?: IGatsbyPlugin,
   traceId?: string
 ): IRemoveStaleJobAction => {
   return {
@@ -215,5 +272,53 @@ export const removeStaleJob = (
     payload: {
       contentDigest,
     },
+  }
+}
+
+/**
+ * Set gatsby config
+ * @private
+ */
+export const setSiteConfig = (config?: unknown): ISetSiteConfig => {
+  const result = gatsbyConfigSchema.validate(config || {})
+  const normalizedPayload: IGatsbyConfig = result.value
+
+  if (result.error) {
+    const hasUnknownKeys = result.error.details.filter(
+      details => details.type === `object.allowUnknown`
+    )
+
+    if (Array.isArray(hasUnknownKeys) && hasUnknownKeys.length) {
+      const errorMessages = hasUnknownKeys.map(unknown => {
+        const { context, message } = unknown
+        const key = context?.key
+        const suggestion = key && didYouMean(key)
+
+        if (suggestion) {
+          return `${message}. ${suggestion}`
+        }
+
+        return message
+      })
+
+      reporter.panic({
+        id: `10122`,
+        context: {
+          sourceMessage: errorMessages.join(`\n`),
+        },
+      })
+    }
+
+    reporter.panic({
+      id: `10122`,
+      context: {
+        sourceMessage: result.error.message,
+      },
+    })
+  }
+
+  return {
+    type: `SET_SITE_CONFIG`,
+    payload: normalizedPayload,
   }
 }

@@ -7,6 +7,7 @@ import * as reporterActions from "./redux/actions"
 import { LogLevels, ActivityStatuses } from "./constants"
 import { getErrorFormatter } from "./errors"
 import constructError from "../structured-errors/construct-error"
+import { IErrorMapEntry, ErrorId } from "../structured-errors/error-map"
 import { prematureEnd } from "./catch-exit-signals"
 import { IStructuredError } from "../structured-errors/types"
 import { createTimerReporter, ITimerReporter } from "./reporter-timer"
@@ -17,9 +18,10 @@ import { ErrorMeta, CreateLogAction } from "./types"
 const errorFormatter = getErrorFormatter()
 const tracer = globalTracer()
 
-interface IActivityArgs {
+export interface IActivityArgs {
   id?: string
   parentSpan?: Span
+  tags?: { [key: string]: any }
 }
 
 let isVerbose = false
@@ -34,6 +36,23 @@ class Reporter {
    */
   stripIndent = stripIndent
   format = chalk
+
+  errorMap: Record<ErrorId, IErrorMapEntry> = {}
+
+  /**
+   * Set a custom error map to the reporter. This allows
+   * the reporter to extend the internal error map
+   *
+   * Please note: The entered IDs ideally should be different from the ones we internally use:
+   * https://github.com/gatsbyjs/gatsby/blob/master/packages/gatsby-cli/src/structured-errors/error-map.ts
+   */
+
+  setErrorMap = (entry: Record<string, IErrorMapEntry>): void => {
+    this.errorMap = {
+      ...this.errorMap,
+      ...entry,
+    }
+  }
 
   /**
    * Toggle verbosity.
@@ -64,17 +83,17 @@ class Reporter {
   /**
    * Log arguments and exit process with status 1.
    */
-  panic = (errorMeta: ErrorMeta, error?: Error | Error[]): void => {
+  panic = (errorMeta: ErrorMeta, error?: Error | Array<Error>): never => {
     const reporterError = this.error(errorMeta, error)
     trackError(`GENERAL_PANIC`, { error: reporterError })
     prematureEnd()
-    process.exit(1)
+    return process.exit(1)
   }
 
   panicOnBuild = (
     errorMeta: ErrorMeta,
-    error?: Error | Error[]
-  ): IStructuredError | IStructuredError[] => {
+    error?: Error | Array<Error>
+  ): IStructuredError | Array<IStructuredError> => {
     const reporterError = this.error(errorMeta, error)
     trackError(`BUILD_PANIC`, { error: reporterError })
     if (process.env.gatsby_executing_command === `build`) {
@@ -85,9 +104,9 @@ class Reporter {
   }
 
   error = (
-    errorMeta: ErrorMeta,
-    error?: Error | Error[]
-  ): IStructuredError | IStructuredError[] => {
+    errorMeta: ErrorMeta | Array<ErrorMeta>,
+    error?: Error | Array<Error>
+  ): IStructuredError | Array<IStructuredError> => {
     let details: {
       error?: Error
       context: {}
@@ -103,7 +122,7 @@ class Reporter {
       if (Array.isArray(error)) {
         return error.map(errorItem =>
           this.error(errorMeta, errorItem)
-        ) as IStructuredError[]
+        ) as Array<IStructuredError>
       }
       details.error = error
       details.context = {
@@ -120,9 +139,9 @@ class Reporter {
       //    reporter.error([Error]);
     } else if (Array.isArray(errorMeta)) {
       // when we get an array of messages, call this function once for each error
-      return errorMeta.map(errorItem =>
-        this.error(errorItem)
-      ) as IStructuredError[]
+      return errorMeta.map(errorItem => this.error(errorItem)) as Array<
+        IStructuredError
+      >
       // 4.
       //    reporter.error(errorMeta);
     } else if (typeof errorMeta === `object`) {
@@ -135,9 +154,11 @@ class Reporter {
       }
     }
 
-    const structuredError = constructError({ details })
+    const structuredError = constructError({ details }, this.errorMap)
+
     if (structuredError) {
       reporterActions.createLog(structuredError)
+      trackError(`GENERIC_ERROR`, { error: structuredError })
     }
 
     // TODO: remove this once Error component can render this info
@@ -189,8 +210,8 @@ class Reporter {
     text: string,
     activityArgs: IActivityArgs = {}
   ): ITimerReporter => {
-    let { parentSpan, id } = activityArgs
-    const spanArgs = parentSpan ? { childOf: parentSpan } : {}
+    let { parentSpan, id, tags } = activityArgs
+    const spanArgs = parentSpan ? { childOf: parentSpan, tags } : { tags }
     if (!id) {
       id = text
     }
@@ -214,8 +235,8 @@ class Reporter {
     text: string,
     activityArgs: IActivityArgs = {}
   ): IPhantomReporter => {
-    let { parentSpan, id } = activityArgs
-    const spanArgs = parentSpan ? { childOf: parentSpan } : {}
+    let { parentSpan, id, tags } = activityArgs
+    const spanArgs = parentSpan ? { childOf: parentSpan, tags } : { tags }
     if (!id) {
       id = text
     }
@@ -234,8 +255,8 @@ class Reporter {
     start = 0,
     activityArgs: IActivityArgs = {}
   ): IProgressReporter => {
-    let { parentSpan, id } = activityArgs
-    const spanArgs = parentSpan ? { childOf: parentSpan } : {}
+    let { parentSpan, id, tags } = activityArgs
+    const spanArgs = parentSpan ? { childOf: parentSpan, tags } : { tags }
     if (!id) {
       id = text
     }
@@ -255,5 +276,5 @@ class Reporter {
   // "reporter._setStage is not a function" error when gatsby@<2.16 is used with gatsby-cli@>=2.8
   _setStage = (): void => {}
 }
-
+export type { Reporter }
 export const reporter = new Reporter()

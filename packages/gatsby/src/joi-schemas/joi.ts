@@ -13,6 +13,7 @@ const addLeadingSlash = (chain: Joi.StringSchema): Joi.StringSchema =>
 export const gatsbyConfigSchema: Joi.ObjectSchema<IGatsbyConfig> = Joi.object()
   .keys({
     __experimentalThemes: Joi.array(),
+    flags: Joi.object(),
     polyfill: Joi.boolean().default(true),
     assetPrefix: stripTrailingSlash(
       Joi.string().uri({
@@ -31,6 +32,9 @@ export const gatsbyConfigSchema: Joi.ObjectSchema<IGatsbyConfig> = Joi.object()
           .allow(``)
           .replace(/^\/$/, ``)
       )
+    ),
+    linkPrefix: Joi.forbidden().error(
+      new Error(`"linkPrefix" should be changed to "pathPrefix"`)
     ),
     siteMetadata: Joi.object({
       siteUrl: stripTrailingSlash(Joi.string()).uri(),
